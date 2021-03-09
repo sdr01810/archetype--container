@@ -1,0 +1,79 @@
+FROM @container_image_base_tag_fq@
+
+STOPSIGNAL SIGTERM
+
+##
+## define image-specific variables:
+## 
+
+ENV     this_container_image="@container_image@"
+ENV     this_container_image_name="@container_image_name@"
+ENV     this_container_image_tag_fq="@container_image_tag_fq@"
+ENV     this_container_image_tag_uq="@container_image_tag_uq@"
+
+ENV     this_container_image_base="@container_image_base@"
+ENV     this_container_image_base_name="@container_image_base_name@"
+ENV     this_container_image_base_tag_fq="@container_image_base_tag_fq@"
+ENV     this_container_image_base_tag_uq="@container_image_base_tag_uq@"
+
+ENV     this_container_image_variant="@container_image_variant@"
+ENV     this_container_image_version="@container_image_version@"
+ENV     this_container_image_version_variant="@container_image_version_variant@"
+
+ENV     this_container_image_setup_root="/var/local/setup/@container_image_name@"
+
+##
+## define image-specific volume locations (only):
+##
+
+USER    root
+WORKDIR "${this_container_image_setup_root}"
+
+m4_sinclude(Dockerfile.@container_image_name@.prolog)
+
+##
+## ensure everything is provisioned:
+##
+
+USER    root
+WORKDIR "${this_container_image_setup_root}"
+
+RUN     ([ -z "${BASH}" ] || set -o posix ; set | egrep '^this_container' | tee container.env)
+
+RUN     \
+if [ -d "/var/local/setup/@container_image_base_name@" ] ; then \
+\
+cp -r "/var/local/setup/@container_image_base_name@"/home-skeleton . ; \
+cp -r "/var/local/setup/@container_image_base_name@"/artifacts     . ; \
+cp -f "/var/local/setup/@container_image_base_name@"/provision.*   . ; \
+cp -f "/var/local/setup/@container_image_base_name@"/start.*       . ; \
+fi
+
+COPY    ./ ./
+
+RUN     chmod +x *.sh ; chmod -x *.prolog.sh ; chmod -x *.functions.sh 2>&- || :
+
+RUN     rm -rf /etc/container.env && ln -snf "${this_container_image_setup_root%/}/container.env" /etc/container.env
+
+RUN     rm -rf /start && ln -snf "${this_container_image_setup_root%/}/start.sh" /start
+
+RUN     ./provision.sh
+
+##
+## define image-specific volumes:
+##
+
+USER    root
+WORKDIR "${this_container_image_setup_root}"
+
+m4_sinclude(Dockerfile.@container_image_name@.epilog)
+
+##
+## establish entry point:
+##
+
+USER    root
+WORKDIR "${this_container_image_setup_root}"
+
+ENTRYPOINT [ "/start" ]
+

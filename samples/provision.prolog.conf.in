@@ -1,0 +1,4 @@
+. /var/local/setup/@container_image_base_name@/provision.prolog.conf
+
+# no customizations yet
+

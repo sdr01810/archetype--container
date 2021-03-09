@@ -1,0 +1,14 @@
+#!/bin/bash sourced
+## Sets up session variables for our @container_image_name@ environment.
+##
+
+function bash_rc_for_@container_image@() {
+
+	export VERSION_CONTROL=numbered
+
+	export VISUAL=vim
+	export EDITOR=${VISUAL}
+}
+
+bash_rc_for_@container_image@
+

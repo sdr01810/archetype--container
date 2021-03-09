@@ -1,0 +1,10 @@
+#!/bin/sh
+##
+
+. "$(dirname "$(readlink -f "$0")")"/provision.prolog.sh
+
+##
+## core logic:
+##
+
+:

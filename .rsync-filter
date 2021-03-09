@@ -1,0 +1,18 @@
+- *#
+- .#*
+- *.swp
+
+- .ts.*
+- .vagrant*
+
+- scratch*
+
+- typescript*
+
+- Dockerfile.*.prolog
+- Dockerfile.*.epilog
+
+- /build-output/
+- /TAGS
+- /tags
+

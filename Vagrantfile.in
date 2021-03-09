@@ -1,0 +1,114 @@
+## -*- mode: ruby -*-
+## vi: set ft=ruby :
+##
+
+project = "@container_image_name@"
+
+Vagrant.require_version ">= 1.8.6"
+
+##
+
+vm_index        = 0
+vm_name         = "#{project}"
+
+vm_box          = "bento/@container_image_variant@"
+vm_box_version  = ">= 0"
+
+vm_cpu_count    = 1
+
+vm_memory       = 768 # MiB
+
+vm_ip_address   = "192.168.1.#{100 + vm_index}"
+
+##
+
+ssh_forward_x11 = true
+
+ssh_user_vagrant_uses_standard_but_insecure_key_p = true
+
+##
+
+Vagrant.configure(2) do |config|
+  config.ssh.insert_key = ! ssh_user_vagrant_uses_standard_but_insecure_key_p
+  config.ssh.forward_x11 = ssh_forward_x11
+
+  config.vm.box = vm_box
+  config.vm.box_version = vm_box_version
+  config.vm.box_check_update = true
+
+  config.vm.provider "virtualbox" do |provider|
+    provider.gui = false
+    provider.memory = vm_memory
+    provider.customize [
+      "modifyvm", :id,
+
+      "--name", "#{vm_name}",
+
+      "--cpus", "#{vm_cpu_count}",
+    ]
+  end
+
+  config.vm.hostname = "#{vm_name}.local"
+
+  config.vm.synced_folder ".", "/vagrant", disabled: true
+
+  config.vm.synced_folder ".", "/var/local/setup/@container_image_name@", create: true, type: "rsync",
+    rsync__args: ["-azF", "--copy-links"], rsync__exclude: ["*.in"]
+
+  config.vm.provision "shell", inline: <<-END
+    set -e && cd "/var/local/setup/@container_image_name@"
+
+    this_container_image="@container_image@"
+    this_container_image_name="@container_image_name@"
+    this_container_image_tag_fq="@container_image_tag_fq@"
+    this_container_image_tag_uq="@container_image_tag_uq@"
+
+    this_container_image_base="@container_image_base@"
+    this_container_image_base_name="@container_image_base_name@"
+    this_container_image_base_tag_fq="@container_image_base_tag_fq@"
+    this_container_image_base_tag_uq="@container_image_base_tag_uq@"
+
+    this_container_image_variant="@container_image_variant@"
+    this_container_image_version="@container_image_version@"
+    this_container_image_version_variant="@container_image_version_variant@"
+
+    this_container_image_setup_root="/var/local/setup/@container_image_name@"
+
+    ([ -z "${BASH}" ] || set -o posix ; set | egrep '^this_container' | tee container.env)
+
+    :
+
+    if [ -d "/var/local/setup/@container_image_base_name@" ] ; then
+
+      rsync -azF --ignore-existing \
+        --include='/home-skeleton/' \
+        --include='/artifacts/' \
+        --include='/provision.*' \
+        --include='/start.*' \
+        --exclude='/*' \
+        "/var/local/setup/@container_image_base_name@"/ ./
+    fi
+
+    chmod +x *.sh ; chmod -x *.prolog.sh ; chmod -x *.functions.sh 2>&- || :
+
+    rm -rf /etc/container.env && ln -snf "/var/local/setup/@container_image_name@/container.env" /etc/container.env
+
+    rm -rf /start && ln -snf "/var/local/setup/@container_image_name@/start.sh" /start
+
+    :
+
+    sudo ./provision.sh
+  END
+
+  config.vm.provision "shell", run: "always", inline: <<-END
+    set -e && cd "/var/local/setup/@container_image_name@"
+
+    . /etc/container.env
+
+    :
+
+    sudo ./provision-always.sh
+  END
+
+  config.vm.network "private_network", ip: vm_ip_address
+end

@@ -1,0 +1,41 @@
+##
+## Sandbox cruft:
+##
+
+.DS_Store
+*.swp
+.#*
+*#
+*~
+
+.all.*
+.out.*
+.du@*
+.sb.*
+.ts.*
+
+.vagrant
+
+scratch*
+
+typescript*
+
+/Docker.*.id
+/Docker.image.tag
+
+/artifacts/*
+!/artifacts/.empty
+
+##
+## Build output:
+##
+
+build-output*
+
+TAGS
+tags
+
+##
+## Other:
+##
+

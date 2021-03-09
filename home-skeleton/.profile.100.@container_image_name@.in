@@ -1,0 +1,10 @@
+#!/bin/bash sourced
+## Sets up login-only session variables for our @container_image_name@ environment.
+##
+
+sh_profile_for_@container_image@() {
+
+	: # nothing yet
+}
+
+sh_profile_for_@container_image@

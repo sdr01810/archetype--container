@@ -1,0 +1,57 @@
+##
+## Secure login & file transfer [extra]
+##
+
+openssh-server
+openssh-sftp-server
+
+##
+## Python
+##
+
+python2::
+
+python3::
+
+##
+## Version control systems
+##
+
+apt-key:  url https://package.perforce.com/perforce.pubkey
+apt-repo: deb http://package.perforce.com/apt/$(os_release ID) $(os_release VERSION_CODENAME) release
+skip: p4
+
+##
+## Build tools
+##
+
+skip: build-essential
+
+apt-key:  url https://apt.kitware.com/keys/kitware-archive-latest.asc
+apt-repo: deb https://apt.kitware.com/$(os_release ID) $(os_release VERSION_CODENAME) main
+skip: cmake
+skip: cmake-curses-gui
+skip: cmake-doc
+skip: cmake-extras
+
+##
+## Text editors [extra]
+##
+
+apt-repo: ppa:kelleyk/emacs
+skip: emacs
+
+##
+## Patch utilities
+##
+
+colordiff
+patch
+patchutils
+quilt
+
+##
+## Other
+##
+
+

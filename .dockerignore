@@ -1,0 +1,16 @@
+*#
+.#*
+*.swp
+
+.ts.*
+.vagrant*
+
+scratch*
+
+typescript*
+
+Dockerfile.*.prolog
+Dockerfile.*.epilog
+
+*.in
+

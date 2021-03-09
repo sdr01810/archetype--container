@@ -1,0 +1,348 @@
+## -*- mode:makefile -*-
+##
+## GNU makefile (container behavior).
+##
+## Typical uses:
+##
+##     for tool_name in 'GNU Make' ; do
+##         if make --version | egrep -q -i "^${tool_name}" ; then
+##             echo You are using ${tool_name}.
+##             true
+##         else
+##             echo You are not using ${tool_name}.
+##             false
+##         fi
+##     done
+##
+##     make
+##     make all
+##
+##     make source
+##     make build
+##
+##     make clean
+##     make clobber
+##     make distclean
+##
+##     make check
+##     make shell
+##     make run
+##
+##     make push
+##
+## By design, it is rarely necessary to edit this file. To override any of
+## the default values you see below, begin by copying the relevant lines
+## into "Makefile.container.conf", then make your changes in that file as
+## needed. You can also add your own behavior to "Makefile.container.local".
+##
+## For further info, read the GNU Make manual.
+##
+
+default ::
+
+-include Makefile.container.conf
+-include Makefile.container.local
+
+##
+
+as_image_name  = $(subst /,-,$(subst :,-,$(1)))
+
+as_shell_var   = $(subst -,_,$(call as_image_name,$(1)))
+
+omit_wsac_sed  = $(strip $(shell set +e ; egrep -v '^\s*(\#|$$)' $(or $(wildcard $(2)),/dev/null) | sed $(1)))
+
+##
+
+docker_hub_user_name                   ?= $(or $(call omit_wsac_sed,'1!d',Docker.hub.user.name),${DOCKER_HUB_USER})
+
+container_image_name                   ?= $(call omit_wsac_sed,'1!d',Docker.image.name NAME.txt)
+
+container_image_version                ?= $(call omit_wsac_sed,'1!d ; s/^[^0-9]*//',Docker.image.version VERSION.txt)
+
+container_image_base_tag_fq            ?= $(call omit_wsac_sed,'1!d',Docker.image.base.tag Docker.image.base.tag.list)
+
+container_image_base_tag_uq            ?= $(shell echo "${container_image_base_tag_fq}" | sed -e 's/^[^/]*[/]//')
+
+container_image_base_name              ?= $(shell echo "${container_image_base_tag_uq}" | sed -e 's/:.*//')
+
+container_image_variant                ?= $(call as_image_name,${container_image_base_tag_fq})
+
+container_image_version_variant        ?= ${container_image_version}$(if ${container_image_variant},--)${container_image_variant}
+
+container_image_tag_uq                 ?= ${container_image_name}:${container_image_version_variant}
+
+container_image_tag_fq                 ?= ${docker_hub_user_name}$(if ${docker_hub_user_name},/)${container_image_tag_uq}
+
+##
+
+ifeq (,${container_image_name})
+$(error Not defined: container_image_name)
+endif
+
+ifeq (,${container_image_version})
+$(error Not defined: container_image_version)
+endif
+
+ifeq (,${container_image_base_tag_fq})
+$(error Not defined: container_image_base_tag_fq)
+endif
+
+##
+
+docker_cmd_container_id_list           ?= $(shell ${docker_cmd_container_ls} -a | cut -d' ' -f1 | sed -e 1d)
+
+docker_cmd_container_ls                ?= docker container ls
+
+docker_cmd_container_prune             ?= docker container prune
+
+docker_cmd_container_rm                ?= docker container rm
+
+docker_cmd_container_run               ?= $(shell ls -d ./Docker.run.sh 2>&- || echo docker container run)
+
+docker_cmd_container_stop              ?= docker container stop
+
+docker_cmd_image_build                 ?= $(shell ls -d ./Docker.build.sh 2>&- || echo docker image build)
+
+docker_cmd_image_ls                    ?= docker image ls
+
+docker_cmd_image_prune                 ?= docker image prune
+
+docker_cmd_image_push                  ?= docker image push
+
+docker_cmd_image_rm                    ?= docker image rm
+
+docker_cmd_system_prune_force          ?= docker system prune -f
+
+##
+
+vagrant_cmd_container_id_list          ?= $(shell vagrant global-status | sed -e '1,/^---/d ; s/[^a-f0-9].*$$// ; /^$$/,$$d')
+
+vagrant_cmd_container_ls               ?= false # not yet supported
+
+vagrant_cmd_container_prune            ?= vagrant global-status --prune
+
+vagrant_cmd_container_rm               ?= vagrant destroy
+
+vagrant_cmd_container_run              ?= vagrant up
+
+vagrant_cmd_container_stop             ?= vagrant halt
+
+vagrant_cmd_image_build                ?= false # not yet supported
+
+vagrant_cmd_image_ls                   ?= false # not yet supported
+
+vagrant_cmd_image_prune                ?= false # not yet supported
+
+vagrant_cmd_image_push                 ?= false # not yet supported
+
+vagrant_cmd_image_rm                   ?= false # not yet supported
+
+vagrant_cmd_system_prune_force         ?= ${vagrant_cmd_container_prune} >/dev/null
+
+##
+
+container_image = $(call as_shell_var,${container_image_name})
+
+container_image_base = $(call as_shell_var,${container_image_base_name})
+
+#^-- intended use: forming shell variable names in templates
+
+##
+
+define expand_container_image_template =
+@:
+@mkdir -p "$(@D)"
+:
+cat "$<" | perl -pe " \
+\
+	s#[@]container_image[@]#${container_image}#g ; \
+	s#[@]container_image_name[@]#${container_image_name}#g ; \
+	s#[@]container_image_tag_fq[@]#${container_image_tag_fq}#g ; \
+	s#[@]container_image_tag_uq[@]#${container_image_tag_uq}#g ; \
+\
+	s#[@]container_image_base[@]#${container_image_base}#g ; \
+	s#[@]container_image_base_name[@]#${container_image_base_name}#g ; \
+	s#[@]container_image_base_tag_fq[@]#${container_image_base_tag_fq}#g ; \
+	s#[@]container_image_base_tag_uq[@]#${container_image_base_tag_uq}#g ; \
+\
+	s#[@]container_image_variant[@]#${container_image_variant}#g ; \
+	s#[@]container_image_version[@]#${container_image_version}#g ; \
+	s#[@]container_image_version_variant[@]#${container_image_version_variant}#g ; \
+\
+" | (cd "$(@D)" && m4 --prefix-builtins) | cat -s | $(call copy_stdin,$@,${build_output_source_dir_umask})
+endef
+
+${build_output_source_dir}/% : %.in
+	$(expand_container_image_template)
+
+${build_output_source_dir}/%.sh : %.sh.in
+	$(expand_container_image_template)
+
+${build_output_source_dir}/%.conf : %.conf.in
+	$(expand_container_image_template)
+
+${build_output_source_dir}/%.epilog : %.epilog.in
+	$(expand_container_image_template)
+
+${build_output_source_dir}/%.prolog : %.prolog.in
+	$(expand_container_image_template)
+
+${build_output_source_dir}/%.${container_image_name} : %.@container_image_name@.in
+	$(expand_container_image_template)
+
+${build_output_source_dir}/%.${container_image_name}.sh : %.@container_image_name@.sh.in
+	$(expand_container_image_template)
+
+${build_output_source_dir}/%.${container_image_name}.conf : %.@container_image_name@.conf.in
+	$(expand_container_image_template)
+
+${build_output_source_dir}/%.${container_image_name}.epilog : %.@container_image_name@.epilog.in
+	$(expand_container_image_template)
+
+${build_output_source_dir}/%.${container_image_name}.prolog : %.@container_image_name@.prolog.in
+	$(expand_container_image_template)
+
+generated_source_templates = $(strip \
+	$(wildcard *.in) $(wildcard home-skeleton/.*.in) \
+)
+
+generated_source += $(strip $(sort \
+	$(subst @container_image_name@,${container_image_name},\
+		$(patsubst %.in,${build_output_source_dir}/%,${generated_source_templates}) \
+)))
+
+##
+
+${build_output_source_dir}/Dockerfile : $(findstring ${build_output_source_dir}/Dockerfile.${container_image_name}.prolog,$(generated_source))
+${build_output_source_dir}/Dockerfile : $(findstring ${build_output_source_dir}/Dockerfile.${container_image_name}.epilog,$(generated_source))
+${build_output_source_dir}/Dockerfile : ${build_output_source_dir}/Dockerfile.in
+	$(expand_container_image_template)
+
+generated_source += $(strip \
+	${build_output_source_dir}/Dockerfile.in \
+	$(if $(findstring Dockerfile.in,${generated_source_templates}),,${build_output_source_dir}/Dockerfile) \
+)
+
+##
+
+${build_output_source_dir}/% : %
+	:
+	$(call copy_file,$<,$@,${build_output_source_dir_umask})
+
+build_scaffolding_source += $(strip $(sort \
+	${generated_source_templates} \
+	\
+	$(wildcard host/bin/*) \
+	$(wildcard host/bin/.*) \
+	\
+	$(wildcard archetype/*) \
+	$(wildcard archetype/.*) \
+	\
+	$(wildcard Make Make.*) \
+	$(wildcard Makefile Makefile.*) \
+	\
+	$(wildcard Docker Docker.*) \
+	$(wildcard Vagrant Vagrant.*) \
+	\
+	$(wildcard .git* .hg* .p4* .svn*) \
+))
+
+generated_source_excluded_from_targets += $(strip $(sort \
+	$(patsubst %,${build_output_source_dir}/%,\
+		$(filter-out ${build_scaffolding_source},${distribution_candidates}) \
+)))
+
+##
+
+targets += Docker.image.tag
+
+generated_source += Docker.image.tag
+
+Docker.image.tag :
+	:
+	echo "${container_image_tag_fq}" | $(call copy_stdin,$@,${build_output_dir_umask})
+
+##
+
+${build_output_source_dir}/.ts.completed : ${build_output_source_dir}/.ts.created ${generated_source}
+	@:
+	@$(call touch_file_unless_newer_than,$<,$@,$(build_output_source_dir_umask))
+
+##
+
+targets_phony += push run shell
+
+all :: build check
+
+source :: Makefile
+source :: ${generated_source}
+
+build :: source
+	:
+	${docker_cmd_image_build} --tag "${container_image_tag_fq}" "${build_output_source_dir}"
+
+check :: build
+	:
+	${docker_cmd_container_run} "${container_image_tag_fq}" ls -alh -R /home/ /var/local/setup/
+
+shell :: build
+	:
+	${docker_cmd_container_run} -it "${container_image_tag_fq}"
+
+run :: build
+	:
+	${docker_cmd_container_run} "${container_image_tag_fq}"
+
+push ::
+ifneq ($(findstring /,${container_image_tag_fq}),)
+	:
+	${docker_cmd_image_push} "${container_image_tag_fq}"
+else
+	:
+	false # image tag is not fully qualified: no docker hub user
+endif
+
+##
+
+clean ::
+	:
+	(! [ -s Docker.first-run.id ] || ${docker_cmd_container_rm} -f $$(< Docker.first-run.id)) 2>&- || : ; rm -f Docker.first-run.id
+	:
+	(! [ -s Docker.run.id ] || ${docker_cmd_container_rm} -f $$(< Docker.run.id)) 2>&- || : ; rm -f Docker.run.id
+
+clean ::
+	:
+	(cd "${build_output_source_dir}" && ${vagrant_cmd_container_rm} -f) 2>&- || :
+
+clobber ::
+	:
+	${docker_cmd_image_rm} -f "${container_image_tag_fq}"        >/dev/null 2>&- || :
+	:
+	${docker_cmd_image_rm} -f "${container_image_tag_fq}"--cp00  >/dev/null 2>&- || :
+	:
+	${docker_cmd_image_rm} -f "${container_image_tag_fq}"--cp01  >/dev/null 2>&- || :
+	:
+	${docker_cmd_system_prune_force}
+
+##
+
+targets_phony += distclean.system distclean.system.docker distclean.system.vagrant
+
+distclean.system :: distclean.system.docker distclean.system.vagrant
+
+distclean.system.docker ::
+	:
+	items="$(docker_cmd_container_id_list)" && \
+	[ -z "$${items}" ] || (${docker_cmd_container_rm} -f $${items})
+	:
+	${docker_cmd_system_prune_force}
+
+distclean.system.vagrant ::
+	:
+	items="$(vagrant_cmd_container_id_list)" && \
+	[ -z "$${items}" ] || (${vagrant_cmd_container_rm} -f $${items})
+	:
+	${vagrant_cmd_system_prune_force}
+
+##
+

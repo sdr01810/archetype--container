@@ -1,0 +1,19 @@
+#!/bin/sh sourced
+## Sourced to define configuration variables for accounts needed.
+##
+
+: "${@container_image@_user_enabled:=true}"
+
+##
+
+if "${@container_image@_user_enabled:?}"
+then
+@container_image@_user_name="my-user"
+
+@container_image@_user_sort_order=@
+
+@container_image@_user_description="My user account"
+
+@container_image@_user_extra_group_list="staff sudo"
+fi
+

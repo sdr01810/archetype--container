@@ -28,7 +28,7 @@ archetype/container :
 	@:
 	@mkdir -p "$(@D)"
 	:
-	ln -snf /Work.local/c.sdr/Sandboxes/devops-/project-archetype--container "$@"
+	git clone https://github.com/sdr01810/archetype--container.git "$(@)"
 
 ${build_output_source_dir}/% : archetype/container/%
 	:

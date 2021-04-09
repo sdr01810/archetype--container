@@ -12,7 +12,15 @@
 
 for x1 in "${this_script_dpn:?}"/provision-always.[0-9]*.sh ; do
 
-	case "${x1:?}" in (*.functions.sh) continue ;; esac
+	case "${x1:?}" in
+	(*.functions.sh)
+		continue
+		;;
+
+	(*.list.sh)
+		continue
+		;;
+	esac
 	
 	"${x1:?}"
 done

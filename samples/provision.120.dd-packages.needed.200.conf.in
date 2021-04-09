@@ -10,7 +10,7 @@ if "${dd_package_foo_enabled:?}"
 then
 dd_package_foo_name=foo
 dd_package_foo_version=latest
-dd_package_foo_artifact_stem=${dd_package_foo_name}-${dd_package_foo_version}
+dd_package_foo_artifact_stem=${dd_package_foo_name:?}-${dd_package_foo_version:?}
 dd_package_foo_artifact_url= # nada
 fi
 

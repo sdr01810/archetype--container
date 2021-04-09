@@ -14,7 +14,13 @@
 
 :
 
-run() { #
+run() { # ...
 
-	sleep_forever
+	if [ $# -eq 0 ] ; then
+
+		sleep_forever
+	else
+		(exec "$@")
+	fi
 }
+

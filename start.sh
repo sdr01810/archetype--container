@@ -34,23 +34,20 @@ trap handle_exit EXIT
 echo 1>&2
 echo 1>&2 "STATE: STARTING"
 
-"$(dirname "$(readlink -f "$0")")"/provision-always.sh 1>&2
+provision_always="$(dirname "$(readlink -f "$0")")"/provision-always.sh
+
+if [ -e "${provision_always:?}" ] ; then
+
+	"${provision_always:?}" 1>&2
+fi
 
 echo 1>&2
 echo 1>&2 "STATE: RUNNING"
 
-if [ $# -gt 0 ] ; then
-
-	echo 1>&2
-
-	"$@"
-else
-if [ -t 0 ] ; then
-
-	echo 1>&2
+if [ -t 0 ] && [ $# -eq 0 ] ; then
 
 	su -l
 else
-	run
-fi;fi
+	run "$@"
+fi
 

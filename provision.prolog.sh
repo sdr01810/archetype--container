@@ -24,7 +24,7 @@ append_to_PATH() { # directory_pn
 
 	local d1="${1:?missing value for directory_pn}" ; shift 1
 
-	[ $# -eq 0 ] || return $2
+	[ $# -eq 0 ] || return 2
 
 	case "::${PATH}::" in
 	*:${d1:?}:*) false ;; *) PATH="${PATH}${PATH:+:}${d1:?}" ;;
@@ -35,7 +35,7 @@ prepend_to_PATH() { # directory_pn
 
 	local d1="${1:?missing value for directory_pn}" ; shift 1
 
-	[ $# -eq 0 ] || return $2
+	[ $# -eq 0 ] || return 2
 
 	case "::${PATH}::" in
 	*:${d1:?}:*) false ;; *) PATH="${d1:?}${PATH:+:}${PATH}" ;;
@@ -135,7 +135,7 @@ ensure_dd_package_for_spec() {( # dd_package_spec_id
 	if [ ! -e artifacts/"${this_dd_package_artifact_stem:?}".tar.gz ] ; then
 
 		xx :
-		xx curl -qsS --create-dirs -o \
+		xx curl -qsSL --create-dirs -o \
 		artifacts/"${this_dd_package_artifact_stem:?}".tar.gz "${this_dd_package_artifact_url:?}"
 	fi
 
@@ -348,7 +348,7 @@ ensure_packages_needed() {
 
 	local packages_needed="${this_script_dpn:?}/${this_script_fbn%.*.sh}".packages.needed
 
-	echo apt:: | install_package_list /dev/stdin "${packages_needed}".[0-9]*.txt
+	echo apt:: | install_package_list - "${packages_needed}".[0-9]*
 }
 
 ensure_ssh_configuration_for_user_spec() {( # user_spec_id
@@ -432,19 +432,22 @@ ensure_ssh_server() { #
 
 ensure_sudo_without_password_for_os_unix_group() { # group_name
 
-       local group_name="${1:?missing value for group_name}" ; shift 1
+	local group_name="${1:?missing value for group_name}" ; shift 1
 
-       ! [ -d /etc/sudoers.d ] ||
-       for f1 in /etc/sudoers.d/no-password-needed-for-group-"${group_name:?}" ; do
-       (
-               xx :
+	! [ -d /etc/sudoers.d ] ||
+	for f1 in /etc/sudoers.d/no-password-needed-for-group-"${group_name:?}" ; do
+	(
+		xx :
 
-               umask 0337
+		umask 0337
 
-               echo '%sudo ALL = NOPASSWD: ALL' | xx tee "$f1"
+		echo '%sudo ALL = NOPASSWD: ALL' | xx tee "$f1"
 
-               xx :
-               xx chmod 0440 "$f1"
+		xx :
+		xx chmod 0440 "$f1"
+
+		xx :
+		xx sudo_pass_through -E visudo --check --strict
        )
        done
 }
@@ -453,7 +456,7 @@ get_dd_package_spec_id_list() { #
 
 	get_var_list_unsorted |
 
-	sed -e '/^dd_package_..*_name$/!d ; s/^dd_package_// ; s/_name$//' |
+	sed -e '/^dd_package_..*_name$/!d ; s/_name$//' |
 
 	sort_var_list
 }
@@ -557,13 +560,11 @@ install_package_list() {( # [ package_list_fpn ... ]
 	local package_spec_resolved
 	local package_spec
 
-	##
-
-	(cat "$@" ; echo skip::) |
-
-	(egrep -v '^\s*(#|$)' || :) |
+	(interpolate_package_list "$@" ; echo skip::) |
 
 	while read -r package_spec ; do
+
+		[ -n "${package_spec}" ] || continue
 
 		package_spec_resolved="$(resolve_package_spec "${package_spec:?}")"
 
@@ -638,7 +639,7 @@ install_package__spec_handler__apt__install_base() { #
 
 	xx sudo_pass_through -E apt-get -qq install apt-utils
 
-	xx sudo_pass_through -E apt-get -qq install apt gnupg
+	xx sudo_pass_through -E apt-get -qq install apt dpkg gnupg
 
 	xx sudo_pass_through -E apt-get -qq install apt-transport-https || :
 
@@ -697,7 +698,7 @@ install_package__spec_handler__apt_key__install_1() { # apt_key_spec
 
 	(url)
 		xx :
-		xx curl -qsS "${apt_key_spec_remainder:?}" |
+		xx curl -qsSL "${apt_key_spec_remainder:?}" |
 		xx sudo_pass_through -E apt-key add - 2>&1 | egrep -v 'Warning: apt-key\b'
 		;;
 
@@ -742,6 +743,9 @@ install_package__spec_handler__apt_repo() { # apt_repo_spec
 		install_package__spec_handler__apt_repo__install_1 "${apt_repo_spec:?}" || return
 		;;
 	esac
+
+	xx :
+	xx sudo_pass_through -E apt-get update
 }
 
 install_package__spec_handler__apt_repo__can_support_batching() { #
@@ -777,7 +781,14 @@ install_package__spec_handler__apt_repo__install_1() { # apt_repo_spec
 		xx :
 		xx sudo_pass_through -E apt-add-repository "${apt_repo_spec:?}"
 		;;
-	esac
+	esac |
+
+	if "${should_show_notes_from_apt_repository_when_adding:?}" ; then
+
+		cat
+	else
+		cat > /dev/null
+	fi
 }
 
 install_package__spec_handler__apt_repo__install_base() { #
@@ -790,15 +801,15 @@ install_package__spec_handler__apt_repo__interpolate() { # ...
 	while [ $# -gt 0 ] ; do
 
 		echo "${1}" | sed \
-			-e 's#\$(os_release ID)#'"$(os_release ID || echo UNKNOWN)"'#g' \
-			-e 's#\$(os_release NAME)#'"$(os_release NAME || echo UNKNOWN)"'#g' \
-			-e 's#\$(os_release VERSION_CODENAME)#'"$(os_release VERSION_CODENAME || echo UNKNOWN)"'#g' \
-			-e 's#\$(os_release VERSION_ID)#'"$(os_release VERSION_ID || echo UNKNOWN)"'#g' \
+			-e 's#\$(os_release ARCH)#'"$(              os_release ARCH ||              echo os_release_ARCH_UNKNOWN)"'#g' \
+			-e 's#\$(os_release ID)#'"$(                os_release ID ||                echo os_release_ID_UNKNOWN)"'#g' \
+			-e 's#\$(os_release NAME)#'"$(              os_release NAME ||              echo os_release_NAME_UNKNOWN)"'#g' \
+			-e 's#\$(os_release VERSION_CODENAME)#'"$(  os_release VERSION_CODENAME ||  echo os_release VERSION_CODENAME_UNKNOWN)"'#g' \
+			-e 's#\$(os_release VERSION_ID)#'"$(        os_release VERSION_ID ||        echo os_release_VERSION_ID_UNKNOWN)"'#g' \
 			;
 
 			#^-- each interpolated expression expands to exactly one word
 
-			#^-- apt-add-repository(1) will subsequently interpolate: $(ARCH)
 		shift
 	done
 }
@@ -917,18 +928,24 @@ install_package__spec_handler__python_variant__install_base() { # variant
 	fi;fi
 	fi;fi
 
+	local pip="pip${variant}"
+
+	if hash "${pip:?}" >/dev/null 2>&- ; then
+
+		:
+	else
 	if [ -n "${pip_installer_url}" ] ; then
 
 		local pip_install_options="-qqq"
 		local pip_module_install_command="pip install ${pip_install_options}"
 
 		xx :
-		xx curl -qsS "${pip_installer_url:?}" |
-		xx sudo_pass_through -E -H "${python}" /dev/stdin ${pip_install_options}
+		xx curl -qsSL "${pip_installer_url:?}" |
+		xx sudo_pass_through -E -H "${python}" - ${pip_install_options}
 
 		xx :
 		xx sudo_pass_through -E -H "${python}" -m ${pip_module_install_command} --upgrade pip
-	fi
+	fi;fi
 }
 
 install_package__spec_handler__python() { # pip_package_spec ...
@@ -961,23 +978,15 @@ install_package__spec_handler__python3__can_support_batching() { #
 	install_package__spec_handler__python_variant__can_support_batching 3
 }
 
-install_package__spec_handler__skip() { # skipped_package_spec
+install_package__spec_handler__skip() { # ...
 
-	local skipped_package_spec="${1:?missing value for skipped_package_spec}" ; shift 1
-
-	[ $# -eq 0 ] || {
-
-		echo 1>&2 "${this_script_name:?}: unexpected argument(s): ${@}"
-		return 2
-	}
-
-	case "${skipped_package_spec}" in
+	case "$*" in
 	(:|'')
 		install_package__spec_handler__skip__install_base || return
 		;;
 
 	(*)
-		install_package__spec_handler__skip__install_1 "${skipped_package_spec:?}" || return
+		install_package__spec_handler__skip__install_1 "$@" || return
 		;;
 	esac
 }
@@ -987,7 +996,7 @@ install_package__spec_handler__skip__can_support_batching() { #
 	false
 }
 
-install_package__spec_handler__skip__install_1() { # skipped_package_spec
+install_package__spec_handler__skip__install_1() { # ...
 
 	: # by design: do nothing
 }
@@ -995,6 +1004,73 @@ install_package__spec_handler__skip__install_1() { # skipped_package_spec
 install_package__spec_handler__skip__install_base() { #
 
 	: # by design: do nothing
+}
+
+install_package__spec_handler__update_alternatives() { # ...
+
+	case "$*" in
+	(:|'')
+		install_package__spec_handler__update_alternatives__install_base || return
+		;;
+
+	(*)
+		install_package__spec_handler__update_alternatives__install_1 "$@" || return
+		;;
+	esac
+}
+
+install_package__spec_handler__update_alternatives__can_support_batching() { #
+
+	false
+}
+
+install_package__spec_handler__update_alternatives__install_1() { # ...
+
+	xx :
+	xx sudo_pass_through -E update-alternatives $* # sic
+}
+
+install_package__spec_handler__update_alternatives__install_base() { #
+
+	install_package__spec_handler__apt__install_base
+
+	#^-- update-alternatives(1) is part of dpkg
+}
+
+interpolate_package_list() { # [ package_list_fpn ... ]
+
+	local package_list_fpn
+
+	if [ $# -eq 0 ] ; then
+
+		cat
+	else
+		interpolate_package_list__impl_each "$@"
+	fi |
+
+	(egrep -v '^\s*(#|$)' || :) |
+
+	sed -e 's/#.*$//' |
+
+	cat -s
+}
+
+interpolate_package_list__impl_each() { # [ package_list_fpn ... ]
+
+	local package_list_fpn
+
+	for package_list_fpn in "$@" ; do
+
+		case "${package_list_fpn:?}" in
+		(*.list.sh)
+			(. "${package_list_fpn:?}") || return
+			;;
+
+		(*|'')
+			cat "${package_list_fpn:?}"
+			;;
+		esac
+	done
 }
 
 list_all_known_apt_packages() { #
@@ -1018,6 +1094,12 @@ load_dd_package_vars_for_spec() { # dd_package_spec_id
 	eval "this_dd_package_root_prefix=${dq}\${${dd_package_spec_id}_root_prefix}${dq}"
 
 	##
+
+	: "${this_dd_package_name:?incomplete dd package spec (missing name): ${dd_package_spec_id:?}}"
+
+	: "${this_dd_package_artifact_stem:?incomplete dd package spec (missing artifact_stem): ${dd_package_spec_id:?}}"
+
+	#^-- FIXME: align format and style of package spec error messages across spec types
 
 	case "${this_dd_package_enabled}" in
 	false)
@@ -1082,6 +1164,8 @@ os_release() {( # variable_name ...
 
 	set -e ; . /etc/os-release || return
 
+	local ARCH="$(dpkg --print-architecture 2>&-)"
+
 	while [ $# -gt 0 ] ; do
 
 		if [ -n "${1}" ] ; then
@@ -1115,7 +1199,7 @@ resolve_package_spec() { # package_spec
 	esac
 
 	case "${package_spec_handler}" in
-	(apt|apt-key|apt-repo|python|python2|python3|skip)
+	(apt|apt-key|apt-repo|python|python2|python3|skip|update-alternatives)
 
 		package_spec_handler="$(
 		echo "${package_spec_handler:?}" | sed -e 's#[^a-z0-9]#_#g')"

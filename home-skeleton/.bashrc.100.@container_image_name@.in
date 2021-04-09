@@ -4,10 +4,9 @@
 
 function bash_rc_for_@container_image@() {
 
-	export VERSION_CONTROL=numbered
+	export VISUAL=vim ; export EDITOR=${VISUAL}
 
-	export VISUAL=vim
-	export EDITOR=${VISUAL}
+	export VERSION_CONTROL=numbered
 }
 
 bash_rc_for_@container_image@

@@ -83,13 +83,13 @@ Vagrant.configure(2) do |config|
       rsync -azF --ignore-existing \
         --include='/home-skeleton/' \
         --include='/artifacts/' \
-        --include='/provision.*' \
-        --include='/start.*' \
+        --include='/provision*' \
+        --include='/start*' \
         --exclude='/*' \
         "/var/local/setup/@container_image_base_name@"/ ./
     fi
 
-    chmod +x *.sh ; chmod -x *.prolog.sh ; chmod -x *.functions.sh 2>&- || :
+    chmod +x *.sh ; for x1 in functions list prolog ; do chmod -x *.${x1}.sh 2>&- || : ; done ; chmod -R a+rX .
 
     rm -rf /etc/container.env && ln -snf "/var/local/setup/@container_image_name@/container.env" /etc/container.env
 

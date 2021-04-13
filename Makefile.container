@@ -45,11 +45,11 @@ default ::
 
 ##
 
-as_image_name  = $(subst /,-,$(subst :,-,$(1)))
+as_container_image_name = $(subst /,-,$(subst :,-,$(1)))
 
-as_shell_var   = $(subst -,_,$(call as_image_name,$(1)))
+as_shell_var            = $(subst /,_,$(subst :,_,$(subst -,_,$(1))))
 
-omit_wsac_sed  = $(strip $(shell set +e ; egrep -v '^\s*(\#|$$)' $(or $(wildcard $(2)),/dev/null) | sed $(1)))
+omit_wsac_sed           = $(strip $(shell set +e ; egrep -v -h '^\s*(\#|$$)' $(or $(wildcard $(2)),/dev/null) | sed $(1)))
 
 ##
 
@@ -61,19 +61,7 @@ container_image_version                ?= $(call omit_wsac_sed,'1!d ; s/^[^0-9]*
 
 container_image_base_tag_fq            ?= $(call omit_wsac_sed,'1!d',Docker.image.base.tag Docker.image.base.tag.list)
 
-container_image_base_tag_uq            ?= $(shell echo "${container_image_base_tag_fq}" | sed -e 's/^[^/]*[/]//')
-
-container_image_base_name              ?= $(shell echo "${container_image_base_tag_uq}" | sed -e 's/:.*//')
-
-container_image_variant                ?= $(call as_image_name,${container_image_base_tag_fq})
-
-container_image_version_variant        ?= ${container_image_version}$(if ${container_image_variant},--)${container_image_variant}
-
-container_image_tag_uq                 ?= ${container_image_name}:${container_image_version_variant}
-
-container_image_tag_fq                 ?= ${docker_hub_user_name}$(if ${docker_hub_user_name},/)${container_image_tag_uq}
-
-##
+container_image_primary_base_tag_fq    := $(call omit_wsac_sed,'1!d',Docker.image.base.tag Docker.image.base.tag.list)
 
 ifeq (,${container_image_name})
 $(error Not defined: container_image_name)
@@ -86,6 +74,46 @@ endif
 ifeq (,${container_image_base_tag_fq})
 $(error Not defined: container_image_base_tag_fq)
 endif
+
+##
+
+container_image_base_tag_uq            ?= $(shell echo "${container_image_base_tag_fq}" | sed -e 's/^[^/]*[/]//')
+
+container_image_base_name              ?= $(shell echo "${container_image_base_tag_uq}" | sed -e 's/:.*//')
+
+container_image_variant                ?= $(call as_container_image_name,$(shell echo "${container_image_base_tag_uq}" | sed -e 's/^.*--//'))
+
+container_image_version_variant        ?= ${container_image_version}$(if ${container_image_variant},--)${container_image_variant}
+
+container_image_tag_uq                 ?= ${container_image_name}:${container_image_version_variant}
+
+container_image_tag_fq                 ?= ${docker_hub_user_name}$(if ${docker_hub_user_name},/)${container_image_tag_uq}
+
+##
+
+container_image_primary_base_tag_uq     = $(shell echo "${container_image_primary_base_tag_fq}" | sed -e 's/^[^/]*[/]//')
+
+container_image_primary_base_name       = $(shell echo "${container_image_primary_base_tag_uq}" | sed -e 's/:.*//')
+
+container_image_primary_variant         = $(call as_container_image_name,$(shell echo "${container_image_primary_base_tag_uq}" | sed -e 's/^.*--//'))
+
+container_image_primary_version_variant = ${container_image_version}$(if ${container_image_primary_variant},--)${container_image_primary_variant}
+
+container_image_primary_tag_uq          = ${container_image_name}:${container_image_primary_version_variant}
+
+container_image_primary_tag_fq          = ${docker_hub_user_name}$(if ${docker_hub_user_name},/)${container_image_primary_tag_uq}
+
+##
+
+container_image_default_tag_uq          = ${container_image_name}:${container_image_version}
+
+container_image_default_tag_fq          = ${docker_hub_user_name}$(if ${docker_hub_user_name},/)${container_image_default_tag_uq}
+
+##
+
+container_image_latest_tag_uq           = ${container_image_name}:latest
+
+container_image_latest_tag_fq           = ${docker_hub_user_name}$(if ${docker_hub_user_name},/)${container_image_latest_tag_uq}
 
 ##
 
@@ -110,6 +138,8 @@ docker_cmd_image_prune                 ?= docker image prune
 docker_cmd_image_push                  ?= docker image push
 
 docker_cmd_image_rm                    ?= docker image rm
+
+docker_cmd_image_tag                   ?= docker image tag
 
 docker_cmd_system_prune_force          ?= docker system prune -f
 
@@ -169,13 +199,22 @@ cat "$<" | perl -pe " \
 	s#[@]container_image_version[@]#${container_image_version}#g ; \
 	s#[@]container_image_version_variant[@]#${container_image_version_variant}#g ; \
 \
-" | (cd "$(@D)" && m4 --prefix-builtins) | cat -s | $(call copy_stdin,$@,${build_output_source_dir_umask})
+" | (cd "$(@D)" && m4 --prefix-builtins) | cat -s | $(call copy_stdin,$@)
 endef
+
+##
 
 ${build_output_source_dir}/% : %.in
 	$(expand_container_image_template)
 
+ifneq (,)
+${build_output_source_dir}/%.md : %.md.in
+	$(expand_container_image_template)
+
 ${build_output_source_dir}/%.sh : %.sh.in
+	$(expand_container_image_template)
+
+${build_output_source_dir}/%.txt : %.txt.in
 	$(expand_container_image_template)
 
 ${build_output_source_dir}/%.conf : %.conf.in
@@ -186,6 +225,9 @@ ${build_output_source_dir}/%.epilog : %.epilog.in
 
 ${build_output_source_dir}/%.prolog : %.prolog.in
 	$(expand_container_image_template)
+endif
+
+##
 
 ${build_output_source_dir}/%.${container_image_name} : %.@container_image_name@.in
 	$(expand_container_image_template)
@@ -202,14 +244,34 @@ ${build_output_source_dir}/%.${container_image_name}.epilog : %.@container_image
 ${build_output_source_dir}/%.${container_image_name}.prolog : %.@container_image_name@.prolog.in
 	$(expand_container_image_template)
 
+##
+
+${build_output_source_dir}/%.${container_image_name} : %.CONTAINER_IMAGE_NAME.in
+	$(expand_container_image_template)
+
+${build_output_source_dir}/%.${container_image_name}.sh : %.CONTAINER_IMAGE_NAME.sh.in
+	$(expand_container_image_template)
+
+${build_output_source_dir}/%.${container_image_name}.conf : %.CONTAINER_IMAGE_NAME.conf.in
+	$(expand_container_image_template)
+
+${build_output_source_dir}/%.${container_image_name}.epilog : %.CONTAINER_IMAGE_NAME.epilog.in
+	$(expand_container_image_template)
+
+${build_output_source_dir}/%.${container_image_name}.prolog : %.CONTAINER_IMAGE_NAME.prolog.in
+	$(expand_container_image_template)
+
+##
+
 generated_source_templates = $(strip \
 	$(wildcard *.in) $(wildcard home-skeleton/.*.in) \
 )
 
 generated_source += $(strip $(sort \
 	$(subst @container_image_name@,${container_image_name},\
-		$(patsubst %.in,${build_output_source_dir}/%,${generated_source_templates}) \
-)))
+		$(subst CONTAINER_IMAGE_NAME,@container_image_name@,\
+			$(patsubst %.in,${build_output_source_dir}/%,${generated_source_templates}) \
+))))
 
 ##
 
@@ -225,9 +287,17 @@ generated_source += $(strip \
 
 ##
 
+$(build_output_source_dir)/artifacts/% : $(build_output_artifacts_dir)/%
+	:
+	$(call link_or_copy_file,$<,$@)
+
 ${build_output_source_dir}/% : %
 	:
-	$(call copy_file,$<,$@,${build_output_source_dir_umask})
+	$(call copy_file,$<,$@)
+
+$(build_output_source_dir)/.ts.created : $(force)
+	@:
+	@$(call touch_file,$@)
 
 build_scaffolding_source += $(strip $(sort \
 	${generated_source_templates} \
@@ -258,15 +328,9 @@ targets += Docker.image.tag
 
 generated_source += Docker.image.tag
 
-Docker.image.tag :
+Docker.image.tag : ${build_output_source_dir}/Dockerfile.in
 	:
-	echo "${container_image_tag_fq}" | $(call copy_stdin,$@,${build_output_dir_umask})
-
-##
-
-${build_output_source_dir}/.ts.completed : ${build_output_source_dir}/.ts.created ${generated_source}
-	@:
-	@$(call touch_file_unless_newer_than,$<,$@,$(build_output_source_dir_umask))
+	echo "${container_image_tag_fq}" | $(call copy_stdin,$@)
 
 ##
 
@@ -274,16 +338,45 @@ targets_phony += push run shell
 
 all :: build check
 
-source :: Makefile
-source :: ${generated_source}
+build.hook.during :: $(build_output_dir)/.ts.did-build-container-image
 
-build :: source
+$(build_output_dir)/.ts.did-build-container-image :
 	:
 	${docker_cmd_image_build} --tag "${container_image_tag_fq}" "${build_output_source_dir}"
+#
+ifeq  (${container_image_primary_tag_fq},${container_image_tag_fq})
+#
+  ifneq (${container_image_primary_tag_fq},${container_image_default_tag_fq})
+	:
+	${docker_cmd_image_tag} "${container_image_primary_tag_fq}" "${container_image_default_tag_fq}"
+  endif
+#
+  ifneq (${container_image_primary_tag_fq},${container_image_latest_tag_fq})
+  ifneq (${container_image_default_tag_fq},${container_image_latest_tag_fq})
+	:
+	${docker_cmd_image_tag} "${container_image_primary_tag_fq}" "${container_image_latest_tag_fq}"
+  endif
+  endif
+#
+endif
+	@:
+	@$(call touch_file,$@)
 
-check :: build
+check :: $(build_output_dir)/.ts.did-check-container-image
+
+$(build_output_dir)/.ts.did-check-container-image : $(build_output_dir)/.ts.did-build-container-image
+
+$(build_output_dir)/.ts.did-check-container-image : $(build_output_dir)/.ts.did-check-container-image.100
+
+$(build_output_dir)/.ts.did-check-container-image.100 : $(MAKEFILE_LIST) $(force)
 	:
 	${docker_cmd_container_run} "${container_image_tag_fq}" ls -alh -R /home/ /var/local/setup/
+	:
+	${docker_cmd_container_run} "${container_image_tag_fq}" su -l -c 'echo $$PATH' prodop
+	:
+	${docker_cmd_container_run} "${container_image_tag_fq}" su -c 'echo $$PATH' prodop
+	@:
+	@$(call touch_file,$@)
 
 shell :: build
 	:
@@ -306,15 +399,22 @@ endif
 
 clean ::
 	:
+	(cd "${build_output_source_dir}" && ${vagrant_cmd_container_rm} -f) 2>&- || :
+
+clean ::
+	:
 	(! [ -s Docker.first-run.id ] || ${docker_cmd_container_rm} -f $$(< Docker.first-run.id)) 2>&- || : ; rm -f Docker.first-run.id
 	:
 	(! [ -s Docker.run.id ] || ${docker_cmd_container_rm} -f $$(< Docker.run.id)) 2>&- || : ; rm -f Docker.run.id
 
-clean ::
+clobber ::
 	:
-	(cd "${build_output_source_dir}" && ${vagrant_cmd_container_rm} -f) 2>&- || :
+	$(call remove_file,$(build_output_dir)/.ts.did-check-container-image.100)
+	$(call remove_file,$(build_output_dir)/.ts.did-check-container-image)
 
 clobber ::
+	:
+	$(call remove_file,$(build_output_dir)/.ts.did-build-container-image)
 	:
 	${docker_cmd_image_rm} -f "${container_image_tag_fq}"        >/dev/null 2>&- || :
 	:
@@ -346,3 +446,12 @@ distclean.system.vagrant ::
 
 ##
 
+artifacts.hook.during :: $(generated_artifacts)
+
+source.hook.during :: $(generated_source)
+
+.PHONY : $(targets_phony) # must be last
+
+#^-- must be after corresponding variables are populated
+
+## EOF

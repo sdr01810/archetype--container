@@ -1,0 +1,35 @@
+#!/bin/bash sourced
+## Coordinates the user's overall bash rc setup.
+##
+## By design: sets up interactive session variables and then sources individual slices.
+##
+## By design: redundant sourcing of this file within the same process is short-circuited.
+##
+## By design: sourced by .profile.overall *before* individual .profile slices are sourced.
+##
+
+[ "${DID_SOURCE_BASH_RC_OVERALL:-0}" -lt 1 ] || return 0 # prevent redundant sourcing
+
+DID_SOURCE_BASH_RC_OVERALL=1 # by design: not exported
+
+##
+
+function bash_rc_overall() {
+
+	: "${HOME:?missing value for HOME}" ; export HOME
+
+	. "${HOME:?}"/.common.overall.prolog.sh # must exist
+
+	##
+
+	local this_bash_rc_slice
+
+	for this_bash_rc_slice in "${HOME:?}"/.bashrc.[0-9]*[^~] ; do
+
+		[ -e "${this_bash_rc_slice:?}" ] || continue
+
+		. "${this_bash_rc_slice:?}"
+	done
+}
+
+bash_rc_overall

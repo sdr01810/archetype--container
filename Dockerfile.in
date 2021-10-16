@@ -43,10 +43,10 @@ RUN     ([ -z "${BASH}" ] || set -o posix ; set | egrep '^this_container' | tee 
 RUN     \
 if [ -d "/var/local/setup/@container_image_base_name@" ] ; then \
 \
-cp -r "/var/local/setup/@container_image_base_name@"/home-skeleton . ; \
-cp -r "/var/local/setup/@container_image_base_name@"/artifacts     . ; \
-cp -f "/var/local/setup/@container_image_base_name@"/provision*    . ; \
-cp -f "/var/local/setup/@container_image_base_name@"/start*        . ; \
+cp -r "/var/local/setup/@container_image_base_name@"/artifacts   . ; \
+cp -r "/var/local/setup/@container_image_base_name@"/skeletons   . ; \
+cp -f "/var/local/setup/@container_image_base_name@"/provision*  . ; \
+cp -f "/var/local/setup/@container_image_base_name@"/start*      . ; \
 fi
 
 COPY    ./ ./

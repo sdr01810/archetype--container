@@ -264,7 +264,7 @@ ${build_output_source_dir}/%.${container_image_name}.prolog : %.CONTAINER_IMAGE_
 ##
 
 generated_source_templates = $(strip \
-	$(wildcard *.in) $(wildcard home-skeleton/.*.in) \
+	$(wildcard *.in) $(wildcard skeletons/*/*.in) $(wildcard skeletons/*/.*.in) \
 )
 
 generated_source += $(strip $(sort \

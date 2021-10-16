@@ -1153,7 +1153,7 @@ load_os_unix_account_vars_for_user_spec() { # user_spec_id
 	: "${this_user_group_name:=${this_user_name:?}}"
 	: "${this_user_extra_group_list:=}"
 	: "${this_user_home:=/home/${this_user_name:?}}"
-	: "${this_user_home_skeleton_extra:=home-skeleton}"
+	: "${this_user_home_skeleton_extra:=skeletons/home}"
 	: "${this_user_shell:=:system-picks-user-shell}"
 	: "${this_user_ssh_key_type_list:=:all}"
 

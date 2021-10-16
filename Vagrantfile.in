@@ -81,8 +81,8 @@ Vagrant.configure(2) do |config|
     if [ -d "/var/local/setup/@container_image_base_name@" ] ; then
 
       rsync -azF --ignore-existing \
-        --include='/home-skeleton/' \
         --include='/artifacts/' \
+        --include='/skeletons/' \
         --include='/provision*' \
         --include='/start*' \
         --exclude='/*' \

@@ -1,6 +1,0 @@
-##
-## define additional image-specific volume locations (only):
-##
-
-ENV     @container_image@_volume_01="/v/@container_image_name@/01"
-

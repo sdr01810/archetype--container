@@ -1,6 +1,0 @@
-##
-## define additional image-specific volumes:
-##
-
-VOLUME  [ "${@container_image@_volume_01}" ]
-

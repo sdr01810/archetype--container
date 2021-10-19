@@ -372,9 +372,9 @@ $(build_output_dir)/.ts.did-check-container-image.100 : $(MAKEFILE_LIST) $(force
 	:
 	${docker_cmd_container_run} "${container_image_tag_fq}" ls -alh -R /home/ /var/local/setup/
 	:
-	${docker_cmd_container_run} "${container_image_tag_fq}" su -l -c 'echo $$PATH' prodop
+	${docker_cmd_container_run} "${container_image_tag_fq}" su -l -c 'echo $$PATH' prodops
 	:
-	${docker_cmd_container_run} "${container_image_tag_fq}" su -c 'echo $$PATH' prodop
+	${docker_cmd_container_run} "${container_image_tag_fq}" su -c 'echo $$PATH' prodops
 	@:
 	@$(call touch_file,$@)
 

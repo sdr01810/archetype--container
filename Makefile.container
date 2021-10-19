@@ -330,10 +330,10 @@ build_scaffolding_source += $(strip $(sort \
 	${generated_source_templates} \
 	\
 	$(wildcard host/bin/*) \
-	$(wildcard host/bin/.*) \
+	$(wildcard host/bin/.[a-z]*) \
 	\
-	$(wildcard archetype/*/*) \
-	$(wildcard archetype/*/.*) \
+	$(wildcard archetype/*) \
+	$(wildcard archetype/.[a-z]*) \
 	\
 	$(wildcard Make Make.*) \
 	$(wildcard Makefile Makefile.*) \

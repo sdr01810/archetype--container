@@ -275,14 +275,41 @@ generated_source += $(strip $(sort \
 
 ##
 
+ifneq ($(shell cat Docker.image.tag 2>/dev/null),${container_image_tag_fq})
+
+Docker.image.tag ::
+	:
+	echo "${container_image_tag_fq}" | $(call copy_stdin,$@)
+
+endif
+
+generated_source += Docker.image.tag
+
+targets += Docker.image.tag
+
+##
+
 ${build_output_source_dir}/Dockerfile : $(findstring ${build_output_source_dir}/Dockerfile.${container_image_name}.prolog,$(generated_source))
 ${build_output_source_dir}/Dockerfile : $(findstring ${build_output_source_dir}/Dockerfile.${container_image_name}.epilog,$(generated_source))
+
+${build_output_source_dir}/Dockerfile : Docker.image.tag
 ${build_output_source_dir}/Dockerfile : ${build_output_source_dir}/Dockerfile.in
 	$(expand_container_image_template)
 
 generated_source += $(strip \
 	${build_output_source_dir}/Dockerfile.in \
 	$(if $(findstring Dockerfile.in,${generated_source_templates}),,${build_output_source_dir}/Dockerfile) \
+)
+
+##
+
+${build_output_source_dir}/Vagrantfile : Docker.image.tag
+${build_output_source_dir}/Vagrantfile : ${build_output_source_dir}/Vagrantfile.in
+	$(expand_container_image_template)
+
+generated_source += $(strip \
+	${build_output_source_dir}/Vagrantfile.in \
+	$(if $(findstring Vagrantfile.in,${generated_source_templates}),,${build_output_source_dir}/Vagrantfile) \
 )
 
 ##
@@ -321,16 +348,6 @@ generated_source_excluded_from_targets += $(strip $(sort \
 	$(patsubst %,${build_output_source_dir}/%,\
 		$(filter-out ${build_scaffolding_source},${distribution_candidates}) \
 )))
-
-##
-
-targets += Docker.image.tag
-
-generated_source += Docker.image.tag
-
-Docker.image.tag : ${build_output_source_dir}/Dockerfile.in
-	:
-	echo "${container_image_tag_fq}" | $(call copy_stdin,$@)
 
 ##
 

@@ -14,7 +14,7 @@ for x1 in $(egrep -v '^\s*(#|$)' Docker.image.base.tag.list || :) ; do
 	x2=${x1#*/} ; x2=${x2//:/-}
 
 	(
-		for g1 in "${@:-check}" ; do
+		for g1 in "${@:-default}" ; do
 
 			xx :
 			xx make container_image_base_tag_fq="${x1:?}" "${g1:?}"

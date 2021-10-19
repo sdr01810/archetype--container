@@ -20,10 +20,6 @@ scratch*
 
 typescript*
 
-/Docker.*.id
-/Docker.image.tag
-/Docker.image.base.tag
-
 /artifacts.cache/*
 !/artifacts.cache/.gitignore
 
@@ -31,10 +27,13 @@ typescript*
 ## Build output:
 ##
 
-build-output*
+/Docker.*.id
+/Docker.*.tag
 
-TAGS
-tags
+/build-output*
+
+/TAGS
+/tags
 
 ##
 ## Other:

@@ -18,7 +18,7 @@ vm_cpu_count    = 1
 
 vm_memory       = 768 # MiB
 
-vm_ip_address   = "192.168.1.#{100 + vm_index}"
+vm_ip_address   = "192.168.2.#{100 + vm_index}"
 
 ##
 

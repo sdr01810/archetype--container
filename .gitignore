@@ -24,8 +24,8 @@ typescript*
 /Docker.image.tag
 /Docker.image.base.tag
 
-/artifacts/*
-!/artifacts/.empty
+/artifacts.cache/*
+!/artifacts.cache/.gitignore
 
 ##
 ## Build output:

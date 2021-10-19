@@ -13,5 +13,7 @@ typescript*
 Dockerfile.*.prolog
 Dockerfile.*.epilog
 
+artifacts.cache
+
 *.in
 

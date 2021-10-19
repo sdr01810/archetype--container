@@ -305,8 +305,8 @@ build_scaffolding_source += $(strip $(sort \
 	$(wildcard host/bin/*) \
 	$(wildcard host/bin/.*) \
 	\
-	$(wildcard archetype/*) \
-	$(wildcard archetype/.*) \
+	$(wildcard archetype/*/*) \
+	$(wildcard archetype/*/.*) \
 	\
 	$(wildcard Make Make.*) \
 	$(wildcard Makefile Makefile.*) \
@@ -340,7 +340,7 @@ all :: build check
 
 build.hook.during :: $(build_output_dir)/.ts.did-build-container-image
 
-$(build_output_dir)/.ts.did-build-container-image :
+$(build_output_dir)/.ts.did-build-container-image : $(generated_source) $(generated_artifacts) $(MAKEFILE_LIST) $(force)
 	:
 	${docker_cmd_image_build} --tag "${container_image_tag_fq}" "${build_output_source_dir}"
 #

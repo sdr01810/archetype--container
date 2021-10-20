@@ -1067,7 +1067,7 @@ interpolate_package_list__impl_each() { # [ package_list_fpn ... ]
 			;;
 
 		(*|'')
-			cat "${package_list_fpn:?}"
+			cat "${package_list_fpn:?}" || return
 			;;
 		esac
 	done

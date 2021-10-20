@@ -3,9 +3,9 @@
 ##
 ## By design: sets up login session variables and then sources individual slices.
 ##
-## By design: redundant sourcing of this file within the same process is short-circuited.
-##
 ## By design: sources .bashrc.overall *before* individual .profile slices are sourced.
+##
+## By design: redundant sourcing of this file within the same process is short-circuited.
 ##
 
 [ "${DID_SOURCE_SH_PROFILE_OVERALL:-0}" -lt 1 ] || return 0 # prevent redundant sourcing
